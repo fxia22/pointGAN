@@ -20,14 +20,21 @@ cv2.setMouseCallback('show3d',onmouse)
 dll=np.ctypeslib.load_library('render_balls_so','.')
 
 def showpoints(xyz,c_gt=None, c_pred = None ,waittime=0,showrot=False,magnifyBlue=0,freezerot=False,background=(0,0,0),normalizecolor=True,ballradius=10):
-    global showsz,mousex,mousey,zoom,changed
-    xyz=xyz-xyz.mean(axis=0)
-    radius=((xyz**2).sum(axis=-1)**0.5).max()
-    xyz/=(radius*2.2)/showsz
+    global showsz,mousex,mousey,zoom,changed, idx
+    idx = 0
+    if len(xyz.shape) == 2:
+        xyz = np.expand_dims(xyz, 0)
+
+    num_samples = xyz.shape[0]
+
+    for i in range(num_samples):
+        xyz[i]=xyz[i]-xyz[i].mean(axis=0)
+        radius=((xyz[i]**2).sum(axis=-1)**0.5).max()
+        xyz[i]/=(radius*2.2)/showsz
     if c_gt is None:
-        c0=np.zeros((len(xyz),),dtype='float32')+255
-        c1=np.zeros((len(xyz),),dtype='float32')+255
-        c2=np.zeros((len(xyz),),dtype='float32')+255
+        c0=np.zeros((len(xyz[idx]),),dtype='float32')+255
+        c1=np.zeros((len(xyz[idx]),),dtype='float32')+255
+        c2=np.zeros((len(xyz[idx]),),dtype='float32')+255
     else:
         c0=c_gt[:,0]
         c1=c_gt[:,1]
@@ -66,7 +73,7 @@ def showpoints(xyz,c_gt=None, c_pred = None ,waittime=0,showrot=False,magnifyBlu
             [np.sin(yangle),0.0,np.cos(yangle)],
             ]))
         rotmat*=zoom
-        nxyz=xyz.dot(rotmat)+[showsz/2,showsz/2,0]
+        nxyz=xyz[idx].dot(rotmat)+[showsz/2,showsz/2,0]
 
         ixyz=nxyz.astype('int32')
         show[:]=background
@@ -111,18 +118,18 @@ def showpoints(xyz,c_gt=None, c_pred = None ,waittime=0,showrot=False,magnifyBlu
         if cmd==ord('t') or cmd == ord('p'):
             if cmd == ord('t'):
                 if c_gt is None:
-                    c0=np.zeros((len(xyz),),dtype='float32')+255
-                    c1=np.zeros((len(xyz),),dtype='float32')+255
-                    c2=np.zeros((len(xyz),),dtype='float32')+255
+                    c0=np.zeros((len(xyz[idx]),),dtype='float32')+255
+                    c1=np.zeros((len(xyz[idx]),),dtype='float32')+255
+                    c2=np.zeros((len(xyz[idx]),),dtype='float32')+255
                 else:
                     c0=c_gt[:,0]
                     c1=c_gt[:,1]
                     c2=c_gt[:,2]
             else:
                 if c_pred is None:
-                    c0=np.zeros((len(xyz),),dtype='float32')+255
-                    c1=np.zeros((len(xyz),),dtype='float32')+255
-                    c2=np.zeros((len(xyz),),dtype='float32')+255
+                    c0=np.zeros((len(xyz[idx]),),dtype='float32')+255
+                    c1=np.zeros((len(xyz[idx]),),dtype='float32')+255
+                    c2=np.zeros((len(xyz[idx]),),dtype='float32')+255
                 else:
                     c0=c_pred[:,0]
                     c1=c_pred[:,1]
@@ -137,6 +144,15 @@ def showpoints(xyz,c_gt=None, c_pred = None ,waittime=0,showrot=False,magnifyBlu
             changed = True
 
 
+        if cmd==ord('j'):
+            idx = (idx + 1) % num_samples
+            print(idx)
+            changed=True
+
+        if cmd==ord('k'):
+            idx = (idx - 1) % num_samples
+            print(idx)
+            changed=True
 
         if cmd==ord('n'):
             zoom*=1.1

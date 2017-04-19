@@ -34,9 +34,16 @@ print (opt)
 gen = PointGen()
 gen.load_state_dict(torch.load(opt.model))
 
-sim_noise = Variable(torch.randn(1, 100))
-points = gen(sim_noise)
-point_np = points.data.numpy()[0,:].T
+sim_noise = Variable(torch.randn(2, 100))
+
+sim_noises = Variable(torch.zeros(15,100))
+
+for i in range(15):
+    x = i/15.0
+    sim_noises[i] = sim_noise[0] * x + sim_noise[1] * (1-x)
+
+points = gen(sim_noises)
+point_np = points.transpose(2,1).data.numpy()
 
 
 showpoints(point_np)
