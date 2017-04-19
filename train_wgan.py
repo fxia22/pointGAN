@@ -14,7 +14,7 @@ import torchvision.transforms as transforms
 import torchvision.utils as vutils
 from torch.autograd import Variable
 from datasets import PartDataset
-from pointnet import PointNetCls, PointGen
+from pointnet import PointNetCls, PointGen, PointNetReg
 import torch.nn.functional as F
 
 
@@ -22,9 +22,13 @@ import torch.nn.functional as F
 parser = argparse.ArgumentParser()
 parser.add_argument('--batchSize', type=int, default=32, help='input batch size')
 parser.add_argument('--workers', type=int, help='number of data loading workers', default=4)
-parser.add_argument('--nepoch', type=int, default=25, help='number of epochs to train for')
-parser.add_argument('--outf', type=str, default='gan',  help='output folder')
+parser.add_argument('--nepoch', type=int, default=500, help='number of epochs to train for')
+parser.add_argument('--outf', type=str, default='wgan',  help='output folder')
 parser.add_argument('--model', type=str, default = '',  help='model path')
+parser.add_argument('--clamp_lower', type=float, default=-0.02)
+parser.add_argument('--clamp_upper', type=float, default=0.02)
+parser.add_argument('--Diters', type=int, default=5, help='number of D iters per each G iter')
+
 
 opt = parser.parse_args()
 print (opt)
@@ -59,7 +63,7 @@ except OSError:
     pass
 
 
-classifier = PointNetCls(k = 2)
+classifier = PointNetReg()
 gen = PointGen()
 
 
@@ -85,52 +89,62 @@ gen.apply(weights_init)
 classifier.cuda()
 gen.cuda()
     
-optimizerD = optim.Adagrad(classifier.parameters(), lr = 0.0001)
-optimizerG = optim.Adagrad(gen.parameters(), lr = 0.0001)
+optimizerD = optim.Adagrad(classifier.parameters(), lr = 0.001)
+optimizerG = optim.Adagrad(gen.parameters(), lr = 0.001)
 
 
 num_batch = len(dataset)/opt.batchSize
+one = torch.FloatTensor([1]).cuda()
+mone = one * -1
+
 
 for epoch in range(opt.nepoch):
-    for i, data in enumerate(dataloader, 0):
-        optimizerD.zero_grad()
-        points, _ = data
-        points = Variable(points)
-       
-        bs = points.size()[0]
-        target = Variable(torch.from_numpy(np.ones(bs,).astype(np.int64))).cuda()
-        points = points.transpose(2,1) 
-        points = points.cuda()
-        #print(points.size())
-        
-        pred, trans = classifier(points)
-        loss1 = F.nll_loss(pred, target)
+    data_iter = iter(dataloader)
+    i = 0
+    while i < len(dataloader):
         
         
-        
-        sim_noise = Variable(torch.randn(bs, 100)).cuda()
-        fake = gen(sim_noise)
-        fake_target = Variable(torch.from_numpy(np.zeros(bs,).astype(np.int64))).cuda()
-        pred2, trans2 = classifier(fake)
-        
-        loss2 = F.nll_loss(pred2, fake_target)
-        
-        
-        lossD = (loss1 + loss2)/2
-        lossD.backward()
-        #print(pred, target)
-        
-        optimizerD.step()
-        
+        for diter in range(opt.Diters):
+            for p in classifier.parameters():
+                p.data.clamp_(opt.clamp_lower, opt.clamp_upper)
 
+            optimizerD.zero_grad()
+            data = data_iter.next()
+            i += 1
+            
+            if i >= len(dataloader):
+                break
+            points, _ = data
+            
+            points = Variable(points)
+
+            bs = points.size()[0]
+            points = points.transpose(2,1) 
+            points = points.cuda()
+            #print(points.size())
+
+            pred_real, trans = classifier(points)
+            loss_real = torch.mean(pred_real) 
+            
+            sim_noise = Variable(torch.randn(bs, 100)).cuda()
+            fake = gen(sim_noise)
+            pred_fake, trans2 = classifier(fake)
+            loss_fake = torch.mean(pred_fake)
+            lossD = loss_real - loss_fake
+            lossD.backward(one)
+            #print(pred, target)
+            optimizerD.step()
+            print('[%d: %d/%d] train lossD: %f' %(epoch, i, num_batch, lossD.data[0]))
+        
         optimizerG.zero_grad()
         sim_noise = Variable(torch.randn(bs, 100)).cuda()
         points = gen(sim_noise)
         pred, trans = classifier(points)
-        target = Variable(torch.from_numpy(np.ones(bs,).astype(np.int64))).cuda()
         #print(pred, target)
-        lossG = F.nll_loss(pred, target)
-        lossG.backward()
+        
+        lossG = torch.mean(pred)    
+        lossG.backward(one)
+        
         optimizerG.step()
         
         print('[%d: %d/%d] train lossD: %f lossG: %f' %(epoch, i, num_batch, lossD.data[0], lossG.data[0]))

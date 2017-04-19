@@ -108,7 +108,7 @@ class PointNetCls(nn.Module):
     
 class PointNetReg(nn.Module):
     def __init__(self, num_points = 2500, k = 1):
-        super(PointNetCls, self).__init__()
+        super(PointNetReg, self).__init__()
         self.num_points = num_points
         self.feat = PointNetfeat(num_points, global_feat=True)
         self.fc1 = nn.Linear(1024, 512)

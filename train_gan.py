@@ -85,8 +85,8 @@ gen.apply(weights_init)
 classifier.cuda()
 gen.cuda()
     
-optimizerD = optim.Adagrad(classifier.parameters(), lr = 0.0001)
-optimizerG = optim.Adagrad(gen.parameters(), lr = 0.0001)
+optimizerD = optim.Adagrad(classifier.parameters(), lr = 0.001)
+optimizerG = optim.Adagrad(gen.parameters(), lr = 0.001)
 
 
 num_batch = len(dataset)/opt.batchSize
