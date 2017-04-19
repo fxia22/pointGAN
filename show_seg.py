@@ -20,6 +20,7 @@ import torch.nn.functional as F
 import matplotlib.pyplot as plt
 
 
+
 #showpoints(np.random.randn(2500,3), c1 = np.random.uniform(0,1,size = (2500)))
 
 parser = argparse.ArgumentParser()
