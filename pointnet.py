@@ -55,7 +55,7 @@ class STN3d(nn.Module):
 class PointNetfeat(nn.Module):
     def __init__(self, num_points = 2500, global_feat = True):
         super(PointNetfeat, self).__init__()
-        self.stn = STN3d()
+        self.stn = STN3d(num_points = num_points)
         self.conv1 = torch.nn.Conv1d(3, 64, 1)
         self.conv2 = torch.nn.Conv1d(64, 128, 1)
         self.conv3 = torch.nn.Conv1d(128, 1024, 1)
@@ -164,6 +164,92 @@ class PointGen(nn.Module):
         x = F.relu(self.fc3(x))
         x = self.th(self.fc4(x))
         x = x.view(batchsize, 3, 2500)
+        return x
+    
+    
+class PointGenR(nn.Module):
+    def __init__(self, num_points = 2500):
+        super(PointGenR, self).__init__()
+        self.fc1 = nn.Linear(100, 256)
+        self.fc2 = nn.Linear(256, 512)
+        self.fc3 = nn.Linear(512, 1024)
+        self.fc4 = nn.Linear(1024, 500 * 3)
+        self.lstm = nn.LSTM(input_size = 20, hidden_size= 100, num_layers = 2)
+        self.th = nn.Tanh()
+        
+        
+    def forward(self, x):
+        batchsize = x.size()[1]
+        x, _ = self.lstm(x)
+        x = x.view(-1,100)
+        
+        x = F.relu(self.fc1(x))
+        x = F.relu(self.fc2(x))
+        x = F.relu(self.fc3(x))
+        x = self.th(self.fc4(x))
+                
+        x = x.view(5, batchsize, 1500)
+        
+        x = x.transpose(1,0).contiguous()
+        x = x.view(batchsize, 7500)
+        
+        x = x.view(batchsize, 3, 2500)
+        return x
+    
+class PointGenR2(nn.Module):
+    def __init__(self, num_points = 2500):
+        super(PointGenR2, self).__init__()
+        
+        self.decoder = nn.Sequential(
+        nn.Linear(100, 256),
+        nn.ReLU(),
+        nn.Linear(256, 512),
+        nn.ReLU(),
+        nn.Linear(512, 1024),
+        nn.ReLU(),
+        nn.Linear(1024, 500 * 3),
+        nn.Tanh(),
+        )
+            
+        self.lstmcell =   nn.LSTMCell(input_size = 100, hidden_size= 100)
+        
+        self.encoder = nn.Sequential(
+        PointNetfeat(num_points = 500),
+        )
+        self.encoder2 = nn.Sequential(
+        nn.BatchNorm1d(1024),
+        nn.Linear(1024, 512),
+        nn.BatchNorm1d(512),
+        nn.ReLU(),
+        nn.Linear(512, 100),
+        )
+        
+        
+    def forward(self, x):
+        batchsize = x.size()[0]
+        outs = []
+        out = self.decoder(x)
+        out = out.view(batchsize, 3, 500)
+        outs.append(out)
+        
+        hx = Variable(torch.zeros(batchsize, 100))
+        cx = Variable(torch.zeros(batchsize, 100))
+        if x.is_cuda:
+            hx = hx.cuda()
+            cx = cx.cuda()
+        
+        for i in range(4):
+            hd,_ = self.encoder(outs[-1])
+            hd = self.encoder2(hd)
+            hx, cx = self.lstmcell(hd, (hx, cx))
+            
+            out = self.decoder(hx)
+            out = out.view(batchsize, 3, 500)
+            outs.append(out)
+
+            
+        x = torch.cat(outs, 2)
+            
         return x
     
     
