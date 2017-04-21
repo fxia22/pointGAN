@@ -156,10 +156,6 @@ class PointGen(nn.Module):
         self.fc3 = nn.Linear(512, 1024)
         self.fc4 = nn.Linear(1024, 2500 * 3)
         
-        self.bn1 = torch.nn.BatchNorm1d(256)
-        self.bn2 = torch.nn.BatchNorm1d(512)
-        self.bn3 = torch.nn.BatchNorm1d(1024)
-        
         self.th = nn.Tanh()
     def forward(self, x):
         batchsize = x.size()[0]
@@ -171,22 +167,38 @@ class PointGen(nn.Module):
         return x
     
     
-class PointGenConv(nn.Module):
+class PointGenC(nn.Module):
     def __init__(self, num_points = 2500):
-        super(PointGen, self).__init__()
-        self.fc1 = nn.Linear(100, 256)
-        self.fc2 = nn.Linear(256, 512)
-        self.fc3 = nn.Linear(512, 1024)
-        self.fc4 = nn.Linear(1024, 2500 * 3)
+        super(PointGenC, self).__init__()
+        self.conv1 = nn.ConvTranspose1d(100, 1024, 2,2,0)
+        self.conv2 = nn.ConvTranspose1d(1024, 512, 5,5,0)
+        self.conv3 = nn.ConvTranspose1d(512, 256, 5,5,0)
+        self.conv4 = nn.ConvTranspose1d(256, 128, 2,2,0)
+        self.conv5 = nn.ConvTranspose1d(128, 64, 5,5,0)
+        self.conv6 = nn.ConvTranspose1d(64, 3, 5,5,0)
+
+        self.bn1 = torch.nn.BatchNorm1d(1024)
+        self.bn2 = torch.nn.BatchNorm1d(512)
+        self.bn3 = torch.nn.BatchNorm1d(256)
+        self.bn4 = torch.nn.BatchNorm1d(128)
+        self.bn5 = torch.nn.BatchNorm1d(64)      
         self.th = nn.Tanh()
     def forward(self, x):
+        
         batchsize = x.size()[0]
-        x = F.relu(self.fc1(x))
-        x = F.relu(self.fc2(x))
-        x = F.relu(self.fc3(x))
-        x = self.th(self.fc4(x))
-        x = x.view(batchsize, 3, 2500)
+        x = x.view(-1, 100, 1)
+        x = F.relu(self.bn1(self.conv1(x)))
+        x = F.relu(self.bn2(self.conv2(x)))
+        x = F.relu(self.bn3(self.conv3(x)))
+        x = F.relu(self.bn4(self.conv4(x)))
+        x = F.relu(self.bn5(self.conv5(x)))
+        x = self.conv6(x)
+       
+        x = self.th(x)
         return x
+    
+
+
 
 if __name__ == '__main__':
     sim_data = Variable(torch.rand(32,3,2500))

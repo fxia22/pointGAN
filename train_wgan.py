@@ -14,7 +14,7 @@ import torchvision.transforms as transforms
 import torchvision.utils as vutils
 from torch.autograd import Variable
 from datasets import PartDataset
-from pointnet import PointNetCls, PointGen, PointNetReg
+from pointnet import PointNetCls, PointGen, PointNetReg, PointGenC
 import torch.nn.functional as F
 
 
