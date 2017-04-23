@@ -21,3 +21,7 @@ bash download.sh #download dataset
 python train_gan.py
 python show_gan.py --model gan/modelG_10.pth # choose your own model
 ```
+
+# Sample results
+
+![result](https://github.com/fxia22/pointGAN/blob/master/misc/show3d.png?raw=true)
