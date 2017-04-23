@@ -17,11 +17,12 @@ import json
 
 
 class PartDataset(data.Dataset):
-    def __init__(self, root, npoints = 2500, classification = False, class_choice = None, train = True):
+    def __init__(self, root, npoints = 2500, classification = False, class_choice = None, train = True, parts_also = False):
         self.npoints = npoints
         self.root = root
         self.catfile = os.path.join(self.root, 'synsetoffset2category.txt')
         self.cat = {}
+        self.parts_also = parts_also
         
         self.classification = classification
         
@@ -78,13 +79,34 @@ class PartDataset(data.Dataset):
         #resample
         point_set = point_set[choice, :]
         seg = seg[choice]
+        if self.parts_also:
+            num_seg = len(np.unique(seg))
+            j = np.random.randint(num_seg) + 1
+            part = point_set[seg == j]
+            while(part.shape[0] == 0):
+                j = np.random.randint(num_seg) + 1
+                part = point_set[seg == j]
+            choice2 = np.random.choice(part.shape[0], self.npoints/5, replace=True)
+            part = part[choice2, :]
+            #print(part.shape)
+            part = torch.from_numpy(part)
+            
         point_set = torch.from_numpy(point_set)
         seg = torch.from_numpy(seg)
         cls = torch.from_numpy(np.array([cls]).astype(np.int64))
+        
+        
+        if self.parts_also:
+            return point_set, part
+        
         if self.classification:
             return point_set, cls
         else:
             return point_set, seg
+        
+        
+        
+        
         
     def __len__(self):
         return len(self.datapath)
@@ -98,6 +120,11 @@ if __name__ == '__main__':
     print(ps.size(), ps.type(), seg.size(),seg.type())
     
     d = PartDataset(root = 'shapenetcore_partanno_segmentation_benchmark_v0', classification = True)
+    print(len(d))
+    ps, cls = d[0]
+    print(ps.size(), ps.type(), cls.size(),cls.type())
+    
+    d = PartDataset(root = 'shapenetcore_partanno_segmentation_benchmark_v0', classification = True, parts_also = True)
     print(len(d))
     ps, cls = d[0]
     print(ps.size(), ps.type(), cls.size(),cls.type())

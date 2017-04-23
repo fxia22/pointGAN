@@ -15,7 +15,7 @@ import torchvision.transforms as transforms
 import torchvision.utils as vutils
 from torch.autograd import Variable
 from datasets import PartDataset
-from pointnet import PointGen, PointGenR2
+from pointnet import PointGen, PointGenR3
 import torch.nn.functional as F
 import matplotlib.pyplot as plt
 
@@ -31,12 +31,12 @@ parser.add_argument('--model', type=str, default = '',  help='model path')
 opt = parser.parse_args()
 print (opt)
 
-gen = PointGenR2()
+gen = PointGenR3()
 gen.load_state_dict(torch.load(opt.model))
 
-sim_noise = Variable(torch.randn(2, 100))
+sim_noise = Variable(torch.randn(2, 100,5))
 
-sim_noises = Variable(torch.zeros(30,100))
+sim_noises = Variable(torch.zeros(30,100,5))
 
 for i in range(30):
     x = i/30.0

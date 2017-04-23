@@ -62,7 +62,7 @@ pred_choice = pred.data.max(2)[1][0,:,0]
 #print(pred_choice.size())
 pred_color = cmap[pred_choice.numpy(), :]
 
-#print(pred_color.shape)
+print(pred_color.shape)
 
 showpoints(point_np, gt, pred_color)
 
