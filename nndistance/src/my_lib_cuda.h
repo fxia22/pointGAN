@@ -1,3 +1,5 @@
-int my_lib_add_forward_cuda(THCudaTensor *input1, THCudaTensor *input2,
-		       THCudaTensor *output);
-int my_lib_add_backward_cuda(THCudaTensor *grad_output, THCudaTensor *grad_input);
+int nnd_forward_cuda(THCudaTensor *xyz1, THCudaTensor *xyz2, THCudaTensor *dist1, THCudaTensor *dist2, THCudaLongTensor *idx1, THCudaLongTensor *idx2);
+
+
+int nnd_backward_cuda(THCudaTensor *xyz1, THCudaTensor *xyz2, THCudaTensor *gradxyz1, THCudaTensor *gradxyz2, THCudaTensor *graddist1, THCudaTensor *graddist2, THCudaLongTensor *idx1, THCudaLongTensor *idx2);
+

@@ -16,8 +16,15 @@ class NNDFunction(Function):
         self.idx1 = torch.zeros(batchsize, n).type(torch.LongTensor)
         self.idx2 = torch.zeros(batchsize, m).type(torch.LongTensor)
         
-        my_lib.nnd_forward(xyz1, xyz2, dist1, dist2, self.idx1, self.idx2)
-        
+        if not xyz1.is_cuda:
+            my_lib.nnd_forward(xyz1, xyz2, dist1, dist2, self.idx1, self.idx2)
+        else:
+            dist1 = dist1.cuda()
+            dist2 = dist2.cuda()
+            self.idx1 = self.idx1.cuda()
+            self.idx2 = self.idx2.cuda()
+            my_lib.nnd_forward_cuda(xyz1, xyz2, dist1, dist2, self.idx1, self.idx2)
+            
         self.dist1 = dist1
         self.dist2 = dist2
         
@@ -30,6 +37,11 @@ class NNDFunction(Function):
         gradxyz1 = torch.zeros(self.xyz1.size())
         gradxyz2 = torch.zeros(self.xyz2.size())
         
-        my_lib.nnd_backward(self.xyz1, self.xyz2, gradxyz1, gradxyz2, graddist1, graddist2, self.idx1, self.idx2)
-        
+        if not graddist1.is_cuda:
+            my_lib.nnd_backward(self.xyz1, self.xyz2, gradxyz1, gradxyz2, graddist1, graddist2, self.idx1, self.idx2)
+        else:
+            gradxyz1 = gradxyz1.cuda()
+            gradxyz2 = gradxyz2.cuda()
+            my_lib.nnd_backward_cuda(self.xyz1, self.xyz2, gradxyz1, gradxyz2, graddist1, graddist2, self.idx1, self.idx2)
+            
         return gradxyz1, gradxyz2
