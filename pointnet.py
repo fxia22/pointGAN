@@ -15,7 +15,6 @@ from PIL import Image
 import numpy as np
 import matplotlib.pyplot as plt
 import pdb
-import utils
 import torch.nn.functional as F
 
 
@@ -162,6 +161,49 @@ class PointGen(nn.Module):
         self.th = nn.Tanh()
     def forward(self, x):
         batchsize = x.size()[0]
+        x = F.relu(self.fc1(x))
+        x = F.relu(self.fc2(x))
+        x = F.relu(self.fc3(x))
+        x = self.th(self.fc4(x))
+        x = x.view(batchsize, 3, 2500)
+        return x
+    
+    
+class PointGenComp(nn.Module):
+    def __init__(self, num_points = 2500):
+        super(PointGenComp, self).__init__()
+        self.fc1 = nn.Linear(2048, 256)
+        self.fc2 = nn.Linear(256, 512)
+        self.fc3 = nn.Linear(512, 1024)
+        self.fc4 = nn.Linear(1024, 500 * 3)
+        self.encoder = PointNetfeat(num_points = 2000)
+        self.th = nn.Tanh()
+    def forward(self, x, noise):
+        batchsize = x.size()[0]
+        x, _ = self.encoder(x)
+        x = torch.cat([x, noise], 1)
+        
+        x = F.relu(self.fc1(x))
+        x = F.relu(self.fc2(x))
+        x = F.relu(self.fc3(x))
+        x = self.th(self.fc4(x))
+        x = x.view(batchsize, 3, 500)
+        return x
+    
+class PointGenComp2(nn.Module):
+    def __init__(self, num_points = 2500):
+        super(PointGenComp2, self).__init__()
+        self.fc1 = nn.Linear(2048, 256)
+        self.fc2 = nn.Linear(256, 512)
+        self.fc3 = nn.Linear(512, 1024)
+        self.fc4 = nn.Linear(1024, 2500 * 3)
+        self.encoder = PointNetfeat(num_points = 2000)
+        self.th = nn.Tanh()
+    def forward(self, x, noise):
+        batchsize = x.size()[0]
+        x, _ = self.encoder(x)
+        x = torch.cat([x, noise], 1)
+        
         x = F.relu(self.fc1(x))
         x = F.relu(self.fc2(x))
         x = F.relu(self.fc3(x))

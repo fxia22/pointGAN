@@ -11,18 +11,18 @@ import numpy as np
 import progressbar
 import sys
 import torchvision.transforms as transforms
-import utils
 import argparse
 import json
 
 
 class PartDataset(data.Dataset):
-    def __init__(self, root, npoints = 2500, classification = False, class_choice = None, train = True, parts_also = False):
+    def __init__(self, root, npoints = 2500, classification = False, class_choice = None, train = True, parts_also = False, shape_comp = False):
         self.npoints = npoints
         self.root = root
         self.catfile = os.path.join(self.root, 'synsetoffset2category.txt')
         self.cat = {}
         self.parts_also = parts_also
+        self.shape_comp = shape_comp
         
         self.classification = classification
         
@@ -91,21 +91,36 @@ class PartDataset(data.Dataset):
             #print(part.shape)
             part = torch.from_numpy(part)
             
+        
+        
+        if self.shape_comp:
+            num_seg = len(np.unique(seg))
+            j = np.random.randint(num_seg) + 1
+            #print(len(point_set))
+            incomp = point_set[seg != j]
+            #print(len(incomp))
+            
+            choice2 = np.random.choice(incomp.shape[0], 4 * self.npoints/5, replace=True)
+            incomp = incomp[choice2, :]
+            #print(part.shape)
+            incomp = torch.from_numpy(incomp)
+            
         point_set = torch.from_numpy(point_set)
         seg = torch.from_numpy(seg)
         cls = torch.from_numpy(np.array([cls]).astype(np.int64))
         
-        
-        if self.parts_also:
+        if self.shape_comp:
+            return point_set, incomp
+        elif self.parts_also:
             return point_set, part
         
-        if self.classification:
+        elif self.classification:
+
             return point_set, cls
         else:
             return point_set, seg
         
-        
-        
+         
         
         
     def __len__(self):
@@ -124,7 +139,13 @@ if __name__ == '__main__':
     ps, cls = d[0]
     print(ps.size(), ps.type(), cls.size(),cls.type())
     
-    d = PartDataset(root = 'shapenetcore_partanno_segmentation_benchmark_v0', classification = True, parts_also = True)
+    d = PartDataset(root = 'shapenetcore_partanno_segmentation_benchmark_v0',  parts_also = True)
     print(len(d))
     ps, cls = d[0]
     print(ps.size(), ps.type(), cls.size(),cls.type())
+    
+    
+    d = PartDataset(root = 'shapenetcore_partanno_segmentation_benchmark_v0',  shape_comp = True)
+    print(len(d))
+    ps, inc = d[0]
+    print(ps.size(), ps.type(), inc.size(),inc.type())
