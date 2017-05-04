@@ -15,7 +15,7 @@ import torchvision.transforms as transforms
 import torchvision.utils as vutils
 from torch.autograd import Variable
 from datasets import PartDataset
-from pointnet import PointGen, PointGenR
+from pointnet import PointGen, PointGenC
 import torch.nn.functional as F
 import matplotlib.pyplot as plt
 
@@ -31,32 +31,15 @@ parser.add_argument('--model', type=str, default = '',  help='model path')
 opt = parser.parse_args()
 print (opt)
 
-gen = PointGenR()
+gen = PointGen()
 gen.load_state_dict(torch.load(opt.model))
 
-sim_noise = Variable(torch.randn(5, 2, 20))
-
-sim_noises = Variable(torch.zeros(5, 15, 20))
-
-for i in range(15):
-    x = i/15.0
-    sim_noises[:,i,:] = sim_noise[:,0,:] * x + sim_noise[:,1,:] * (1-x)
+sim_noises = Variable(torch.randn(10, 100))
 
 points = gen(sim_noises)
 point_np = points.transpose(2,1).data.numpy()
 
-
-showpoints(point_np)
-
-sim_noise = Variable(torch.randn(5, 1000, 20))
-points = gen(sim_noise)
-point_np = points.transpose(2,1).data.numpy()
 print(point_np.shape)
-choice = np.random.choice(2500, 2048, replace=False)
-print(point_np[:, choice, :].shape)
-
-
 #showpoints(point_np)
 
-np.savez('rgan.npz', points = point_np)
-
+np.savez('points.npz', point_np)

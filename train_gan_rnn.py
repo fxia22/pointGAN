@@ -59,8 +59,8 @@ except OSError:
     pass
 
 
-classifier = PointNetCls(k = 2)
-gen = PointGenR()
+classifier = PointNetCls(k = 2, num_points = 2048)
+gen = PointGenR(num_points = 2048)
 
 
 if opt.model != '':

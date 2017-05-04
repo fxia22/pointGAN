@@ -23,6 +23,7 @@ parser = argparse.ArgumentParser()
 parser.add_argument('--batchSize', type=int, default=32, help='input batch size')
 parser.add_argument('--workers', type=int, help='number of data loading workers', default=4)
 parser.add_argument('--nepoch', type=int, default=500, help='number of epochs to train for')
+parser.add_argument('--num_points', type=int, default=2500, help='number of epochs to train for')
 parser.add_argument('--outf', type=str, default='wgan',  help='output folder')
 parser.add_argument('--model', type=str, default = '',  help='model path')
 parser.add_argument('--clamp_lower', type=float, default=-0.02)
@@ -63,13 +64,13 @@ except OSError:
     pass
 
 
-classifier = PointNetReg()
-gen = PointGen()
+classifier = PointNetReg(num_points = opt.num_points)
+gen = PointGen(num_points = opt.num_points)
 
 
 if opt.model != '':
     classifier.load_state_dict(torch.load(opt.model))
-  
+
 print(classifier)
 print(gen)
 
@@ -81,16 +82,16 @@ def weights_init(m):
     elif classname.find('BatchNorm') != -1:
         m.weight.data.normal_(1.0, 0.02)
         m.bias.data.fill_(0)
-        
+
 
 classifier.apply(weights_init)
 gen.apply(weights_init)
 
 classifier.cuda()
 gen.cuda()
-    
-optimizerD = optim.Adagrad(classifier.parameters(), lr = 0.001)
-optimizerG = optim.Adagrad(gen.parameters(), lr = 0.001)
+
+optimizerD = optim.Adagrad(classifier.parameters(), lr = 0.0005)
+optimizerG = optim.Adagrad(gen.parameters(), lr = 0.0005)
 
 
 num_batch = len(dataset)/opt.batchSize
@@ -102,8 +103,8 @@ for epoch in range(opt.nepoch):
     data_iter = iter(dataloader)
     i = 0
     while i < len(dataloader):
-        
-        
+
+
         for diter in range(opt.Diters):
             for p in classifier.parameters():
                 p.data.clamp_(opt.clamp_lower, opt.clamp_upper)
@@ -111,21 +112,21 @@ for epoch in range(opt.nepoch):
             optimizerD.zero_grad()
             data = data_iter.next()
             i += 1
-            
+
             if i >= len(dataloader):
                 break
             points, _ = data
-            
+
             points = Variable(points)
 
             bs = points.size()[0]
-            points = points.transpose(2,1) 
+            points = points.transpose(2,1)
             points = points.cuda()
             #print(points.size())
 
             pred_real, trans = classifier(points)
-            loss_real = torch.mean(pred_real) 
-            
+            loss_real = torch.mean(pred_real)
+
             sim_noise = Variable(torch.randn(bs, 100)).cuda()
             fake = gen(sim_noise)
             pred_fake, trans2 = classifier(fake)
@@ -135,20 +136,20 @@ for epoch in range(opt.nepoch):
             #print(pred, target)
             optimizerD.step()
             print('[%d: %d/%d] train lossD: %f' %(epoch, i, num_batch, lossD.data[0]))
-        
+
         optimizerG.zero_grad()
         sim_noise = Variable(torch.randn(bs, 100)).cuda()
         points = gen(sim_noise)
         pred, trans = classifier(points)
         #print(pred, target)
-        
-        lossG = torch.mean(pred)    
+
+        lossG = torch.mean(pred)
         lossG.backward(one)
-        
+
         optimizerG.step()
-        
+
         print('[%d: %d/%d] train lossD: %f lossG: %f' %(epoch, i, num_batch, lossD.data[0], lossG.data[0]))
-       
-    
+
+
     torch.save(classifier.state_dict(), '%s/modelD_%d.pth' % (opt.outf, epoch))
     torch.save(gen.state_dict(), '%s/modelG_%d.pth' % (opt.outf, epoch))

@@ -1,5 +1,5 @@
 from __future__ import print_function
-#from show3d_balls import *
+from show3d_balls import *
 import argparse
 import os
 import random
@@ -21,36 +21,15 @@ import matplotlib.pyplot as plt
 
 
 #showpoints(np.random.randn(2500,3), c1 = np.random.uniform(0,1,size = (2500)))
-
 parser = argparse.ArgumentParser()
-
-parser.add_argument('--model', type=str, default = '',  help='model path')
-
-
+parser.add_argument('--sample', type=str, default = '',  help='sample path')
 
 opt = parser.parse_args()
 print (opt)
 
-gen = PointGen(num_points = 2048)
-gen.load_state_dict(torch.load(opt.model))
+data = np.load(opt.sample)
+k = data.keys()[0]
+data = data[k]
 
-sim_noise = Variable(torch.randn(2, 100))
+showpoints(data)
 
-sim_noises = Variable(torch.zeros(15,100))
-
-for i in range(15):
-    x = i/15.0
-    sim_noises[i] = sim_noise[0] * x + sim_noise[1] * (1-x)
-
-points = gen(sim_noises)
-point_np = points.transpose(2,1).data.numpy()
-
-
-#showpoints(point_np)
-
-sim_noise = Variable(torch.randn(1000, 100))
-points = gen(sim_noise)
-point_np = points.transpose(2,1).data.numpy()
-print(point_np.shape)
-
-np.savez('gan.npz', points = point_np)

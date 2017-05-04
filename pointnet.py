@@ -30,7 +30,7 @@ class STN3d(nn.Module):
         self.fc2 = nn.Linear(512, 256)
         self.fc3 = nn.Linear(256, 9)
         self.relu = nn.ReLU()
-    
+
     def forward(self, x):
         batchsize = x.size()[0]
         x = F.relu(self.conv1(x))
@@ -52,8 +52,8 @@ class STN3d(nn.Module):
         x = x + iden
         x = x.view(-1, 3, 3)
         return x
-    
-    
+
+
 class PointNetfeat(nn.Module):
     def __init__(self, num_points = 2500, global_feat = True):
         super(PointNetfeat, self).__init__()
@@ -61,13 +61,13 @@ class PointNetfeat(nn.Module):
         self.conv1 = torch.nn.Conv1d(3, 64, 1)
         self.conv2 = torch.nn.Conv1d(64, 128, 1)
         self.conv3 = torch.nn.Conv1d(128, 1024, 1)
-        
+
         self.bn1 = torch.nn.BatchNorm1d(64)
         self.bn2 = torch.nn.BatchNorm1d(128)
         self.bn3 = torch.nn.BatchNorm1d(1024)
-        
-        
-        
+
+
+
         #self.mp1 = torch.nn.MaxPool1d(num_points)
         self.num_points = num_points
         self.global_feat = global_feat
@@ -88,7 +88,7 @@ class PointNetfeat(nn.Module):
         else:
             x = x.view(-1, 1024, 1).repeat(1, 1, self.num_points)
             return torch.cat([x, pointfeat], 1), trans
-            
+
 class PointNetCls(nn.Module):
     def __init__(self, num_points = 2500, k = 2):
         super(PointNetCls, self).__init__()
@@ -106,8 +106,8 @@ class PointNetCls(nn.Module):
         x = F.relu(self.fc2(x))
         x = self.fc3(x)
         return F.log_softmax(x), trans
-    
-    
+
+
 class PointNetReg(nn.Module):
     def __init__(self, num_points = 2500, k = 1):
         super(PointNetReg, self).__init__()
@@ -136,7 +136,7 @@ class PointNetDenseCls(nn.Module):
         self.conv2 = torch.nn.Conv1d(512, 256, 1)
         self.conv3 = torch.nn.Conv1d(256, 128, 1)
         self.conv4 = torch.nn.Conv1d(128, self.k, 1)
-        
+
     def forward(self, x):
         batchsize = x.size()[0]
         x, trans = self.feat(x)
@@ -148,16 +148,17 @@ class PointNetDenseCls(nn.Module):
         x = F.log_softmax(x.view(-1,self.k))
         x = x.view(batchsize, self.num_points, self.k)
         return x, trans
-       
-        
+
+
 class PointGen(nn.Module):
     def __init__(self, num_points = 2500):
         super(PointGen, self).__init__()
+        self.num_points = num_points
         self.fc1 = nn.Linear(100, 256)
         self.fc2 = nn.Linear(256, 512)
         self.fc3 = nn.Linear(512, 1024)
-        self.fc4 = nn.Linear(1024, 2500 * 3)
-        
+        self.fc4 = nn.Linear(1024, self.num_points * 3)
+
         self.th = nn.Tanh()
     def forward(self, x):
         batchsize = x.size()[0]
@@ -165,10 +166,9 @@ class PointGen(nn.Module):
         x = F.relu(self.fc2(x))
         x = F.relu(self.fc3(x))
         x = self.th(self.fc4(x))
-        x = x.view(batchsize, 3, 2500)
+        x = x.view(batchsize, 3, self.num_points)
         return x
-    
-    
+
 class PointGenComp(nn.Module):
     def __init__(self, num_points = 2500):
         super(PointGenComp, self).__init__()
@@ -182,14 +182,14 @@ class PointGenComp(nn.Module):
         batchsize = x.size()[0]
         x, _ = self.encoder(x)
         x = torch.cat([x, noise], 1)
-        
+
         x = F.relu(self.fc1(x))
         x = F.relu(self.fc2(x))
         x = F.relu(self.fc3(x))
         x = self.th(self.fc4(x))
         x = x.view(batchsize, 3, 500)
         return x
-    
+
 class PointGenComp2(nn.Module):
     def __init__(self, num_points = 2500):
         super(PointGenComp2, self).__init__()
@@ -203,15 +203,15 @@ class PointGenComp2(nn.Module):
         batchsize = x.size()[0]
         x, _ = self.encoder(x)
         x = torch.cat([x, noise], 1)
-        
+
         x = F.relu(self.fc1(x))
         x = F.relu(self.fc2(x))
         x = F.relu(self.fc3(x))
         x = self.th(self.fc4(x))
         x = x.view(batchsize, 3, 2500)
         return x
-    
-    
+
+
 class PointGenR(nn.Module):
     def __init__(self, num_points = 2500):
         super(PointGenR, self).__init__()
@@ -221,30 +221,30 @@ class PointGenR(nn.Module):
         self.fc4 = nn.Linear(1024, 500 * 3)
         self.lstm = nn.LSTM(input_size = 20, hidden_size= 100, num_layers = 2)
         self.th = nn.Tanh()
-        
-        
+
+
     def forward(self, x):
         batchsize = x.size()[1]
         x, _ = self.lstm(x)
         x = x.view(-1,100)
-        
+
         x = F.relu(self.fc1(x))
         x = F.relu(self.fc2(x))
         x = F.relu(self.fc3(x))
         x = self.th(self.fc4(x))
-                
+
         x = x.view(5, batchsize, 1500)
-        
+
         x = x.transpose(1,0).contiguous()
         x = x.view(batchsize, 7500)
-        
+
         x = x.view(batchsize, 3, 2500)
         return x
-    
+
 class PointGenR2(nn.Module):
     def __init__(self, num_points = 2500):
         super(PointGenR2, self).__init__()
-        
+
         self.decoder = nn.Sequential(
         nn.Linear(100, 256),
         nn.ReLU(),
@@ -255,9 +255,9 @@ class PointGenR2(nn.Module):
         nn.Linear(1024, 500 * 3),
         nn.Tanh(),
         )
-            
+
         self.lstmcell =   nn.LSTMCell(input_size = 100, hidden_size= 100)
-        
+
         self.encoder = nn.Sequential(
         PointNetfeat(num_points = 500),
         )
@@ -268,41 +268,41 @@ class PointGenR2(nn.Module):
         nn.ReLU(),
         nn.Linear(512, 100),
         )
-        
-        
+
+
     def forward(self, x):
         batchsize = x.size()[0]
         outs = []
         out = self.decoder(x)
         out = out.view(batchsize, 3, 500)
         outs.append(out)
-        
+
         hx = Variable(torch.zeros(batchsize, 100))
         cx = Variable(torch.zeros(batchsize, 100))
         if x.is_cuda:
             hx = hx.cuda()
             cx = cx.cuda()
-        
+
         for i in range(4):
             hd,_ = self.encoder(outs[-1])
             hd = self.encoder2(hd)
             hx, cx = self.lstmcell(hd, (hx, cx))
-            
+
             out = self.decoder(hx)
             out = out.view(batchsize, 3, 500)
             outs.append(out)
 
-            
+
         x = torch.cat(outs, 2)
-            
+
         return x
-    
-    
-    
+
+
+
 class PointGenR3(nn.Module):
     def __init__(self, num_points = 2500):
         super(PointGenR3, self).__init__()
-        
+
         self.decoder = nn.Sequential(
         nn.Linear(200, 256),
         nn.ReLU(),
@@ -313,9 +313,9 @@ class PointGenR3(nn.Module):
         nn.Linear(1024, 500 * 3),
         nn.Tanh(),
         )
-            
+
         self.lstmcell =   nn.LSTMCell(input_size = 100, hidden_size= 100)
-        
+
         self.encoder = nn.Sequential(
         PointNetfeat(num_points = 500),
         )
@@ -326,20 +326,20 @@ class PointGenR3(nn.Module):
         nn.ReLU(),
         nn.Linear(512, 100),
         )
-        
-        
+
+
     def forward(self, x):
         batchsize = x.size()[0]
-  
+
         hx = Variable(torch.zeros(batchsize, 100))
         cx = Variable(torch.zeros(batchsize, 100))
-        
+
         outs = []
-        
+
         if x.is_cuda:
             hx = hx.cuda()
             cx = cx.cuda()
-                
+
         for i in range(5):
             if i == 0:
                 hd = Variable(torch.zeros(batchsize, 100))
@@ -349,17 +349,17 @@ class PointGenR3(nn.Module):
             #print(hd.size())
             if x.is_cuda:
                 hd = hd.cuda()
-            
+
             hx, cx = self.lstmcell( hd, (hx, cx))
-            
+
             out = self.decoder(torch.cat([hx,x[:,:,i]], 1))
             out = out.view(batchsize, 3, 500)
             outs.append(out)
-   
+
         x = torch.cat(outs, 2)
-            
+
         return x
-    
+
 class PointGenC(nn.Module):
     def __init__(self, num_points = 2500):
         super(PointGenC, self).__init__()
@@ -374,10 +374,10 @@ class PointGenC(nn.Module):
         self.bn2 = torch.nn.BatchNorm1d(512)
         self.bn3 = torch.nn.BatchNorm1d(256)
         self.bn4 = torch.nn.BatchNorm1d(128)
-        self.bn5 = torch.nn.BatchNorm1d(64)      
+        self.bn5 = torch.nn.BatchNorm1d(64)
         self.th = nn.Tanh()
     def forward(self, x):
-        
+
         batchsize = x.size()[0]
         x = x.view(-1, 100, 1)
         x = F.relu(self.bn1(self.conv1(x)))
@@ -386,10 +386,10 @@ class PointGenC(nn.Module):
         x = F.relu(self.bn4(self.conv4(x)))
         x = F.relu(self.bn5(self.conv5(x)))
         x = self.conv6(x)
-       
+
         x = self.th(x)
         return x
-    
+
 
 
 
@@ -398,7 +398,7 @@ if __name__ == '__main__':
     trans = STN3d()
     out = trans(sim_data)
     print('stn', out.size())
-    
+
     pointfeat = PointNetfeat(global_feat=True)
     out, _ = pointfeat(sim_data)
     print('global feat', out.size())
@@ -406,11 +406,11 @@ if __name__ == '__main__':
     pointfeat = PointNetfeat(global_feat=False)
     out, _ = pointfeat(sim_data)
     print('point feat', out.size())
-    
+
     cls = PointNetCls(k = 5)
     out, _ = cls(sim_data)
     print('class', out.size())
-    
+
     seg = PointNetDenseCls(k = 3)
     out, _ = seg(sim_data)
     print('seg', out.size())
