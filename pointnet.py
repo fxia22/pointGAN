@@ -125,6 +125,36 @@ class PointNetReg(nn.Module):
         x = F.relu(self.fc2(x))
         x = self.fc3(x)
         return x, trans
+    
+
+    
+class PointNetReg2(nn.Module):
+    def __init__(self, num_points = 500, k = 3):
+        super(PointNetReg2, self).__init__()
+        self.num_points = num_points
+        self.feat = PointNetfeat(num_points, global_feat=True)
+        self.fc1 = nn.Linear(1024 * 2, 512)
+        self.fc2 = nn.Linear(512, 256)
+        self.fc3 = nn.Linear(256, 100)
+        self.fc4 = nn.Linear(100, k)
+        self.bn1 = torch.nn.BatchNorm1d(512)
+        self.bn2 = torch.nn.BatchNorm1d(256)
+        self.relu = nn.ReLU()
+    def forward(self, x1, x2):
+        x1, trans1 = self.feat(x1)
+        x2, trans2 = self.feat(x2)
+        
+        x = torch.cat([x1,x2], 1)
+        
+        x = F.relu(self.fc1(x))
+        x = F.relu(self.fc2(x))
+        x = F.relu(self.fc3(x))
+        
+        x = self.fc4(x)
+        
+        return x, trans1, trans2
+    
+    
 
 class PointNetDenseCls(nn.Module):
     def __init__(self, num_points = 2500, k = 2):
@@ -414,3 +444,9 @@ if __name__ == '__main__':
     seg = PointNetDenseCls(k = 3)
     out, _ = seg(sim_data)
     print('seg', out.size())
+
+    sim_data = Variable(torch.rand(32,3,500))
+    pointreg = PointNetReg2()
+    out, _, _ = pointreg(sim_data, sim_data)
+    print('reg2', out.size())
+    
