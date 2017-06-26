@@ -107,7 +107,50 @@ class PointNetCls(nn.Module):
         x = self.fc3(x)
         return F.log_softmax(x), trans
 
-
+class PointDecoder(nn.Module):
+    def __init__(self, num_points = 2048, k = 2):
+        super(PointDecoder, self).__init__()
+        self.num_points = num_points
+        self.fc1 = nn.Linear(100, 128)
+        self.fc2 = nn.Linear(128, 256)
+        self.fc3 = nn.Linear(256, 512)
+        self.fc4 = nn.Linear(512, 1024)
+        self.fc5 = nn.Linear(1024, self.num_points * 3)
+        self.th = nn.Tanh()
+    def forward(self, x):
+        batchsize = x.size()[0]
+        x = F.relu(self.fc1(x))
+        x = F.relu(self.fc2(x))
+        x = F.relu(self.fc3(x))
+        x = F.relu(self.fc4(x))
+        x = self.th(self.fc5(x))
+        x = x.view(batchsize, 3, self.num_points)
+        return x
+        
+    
+class PointNetAE(nn.Module):
+    def __init__(self, num_points = 2048, k = 2):
+        super(PointNetAE, self).__init__()
+        self.num_points = num_points
+        self.feat = PointNetfeat(num_points, global_feat=True)
+        self.decoder = PointDecoder(num_points)
+        
+        self.fc1 = nn.Linear(1024, 256)
+        self.fc2 = nn.Linear(256, 100)
+        
+        
+    def forward(self, x):
+        
+        x, trans = self.feat(x)
+        
+        x = F.relu(self.fc1(x))
+        x = self.fc2(x)
+        
+        x = self.decoder(x)
+        
+        return x
+        
+        
 class PointNetReg(nn.Module):
     def __init__(self, num_points = 2500, k = 1):
         super(PointNetReg, self).__init__()
@@ -421,7 +464,53 @@ class PointGenC(nn.Module):
         return x
 
 
-
+class PointGenPSG(nn.Module):
+    def __init__(self, num_points = 2048):
+        super(PointGenPSG, self).__init__()
+        self.num_points = num_points
+        self.fc1 = nn.Linear(100, 256)
+        self.fc2 = nn.Linear(256, 512)
+        self.fc3 = nn.Linear(512, 1024)
+        self.fc4 = nn.Linear(1024, self.num_points / 4 * 3 * 1)
+        self.th = nn.Tanh()
+        
+        self.conv1 = nn.ConvTranspose2d(100,1024,(2,3))
+        self.conv2 = nn.ConvTranspose2d(1024, 512, 4, 2, 1)
+        self.conv3 = nn.ConvTranspose2d(512, 256, 4, 2, 1)
+        self.conv4= nn.ConvTranspose2d(256, 128, 4, 2, 1)
+        self.conv5= nn.ConvTranspose2d(128, 3, 4, 2, 1)
+        
+        self.bn1 = torch.nn.BatchNorm2d(1024)
+        self.bn2 = torch.nn.BatchNorm2d(512)
+        self.bn3 = torch.nn.BatchNorm2d(256)
+        self.bn4 = torch.nn.BatchNorm2d(128)
+        self.bn5 = torch.nn.BatchNorm2d(3)
+        
+        
+        
+    def forward(self, x):
+        batchsize = x.size()[0]
+        
+        x1 = x
+        x2 = x
+        
+        x1 = F.relu(self.fc1(x1))
+        x1 = F.relu(self.fc2(x1))
+        x1 = F.relu(self.fc3(x1))
+        x1 = self.th(self.fc4(x1))
+        x1 = x1.view(batchsize, 3, self.num_points / 4 * 1)
+        
+        x2 = x2.view(-1, 100, 1, 1)
+        x2 = F.relu((self.conv1(x2)))
+        x2 = F.relu((self.conv2(x2)))
+        x2 = F.relu((self.conv3(x2)))
+        x2 = F.relu((self.conv4(x2)))
+        x2 = self.th((self.conv5(x2)))
+        
+        x2 = x2.view(-1, 3, 32 * 48)
+        #print(x1.size(), x2.size())
+        
+        return torch.cat([x1, x2], 2)
 
 if __name__ == '__main__':
     sim_data = Variable(torch.rand(32,3,2500))
