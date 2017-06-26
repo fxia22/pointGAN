@@ -79,18 +79,17 @@ class PartDataset(data.Dataset):
         #resample
         point_set = point_set[choice, :]
         seg = seg[choice]
+        parts = []
         if self.parts_also:
-            num_seg = len(np.unique(seg))
-            j = np.random.randint(num_seg) + 1
-            part = point_set[seg == j]
-            while(part.shape[0] == 0):
-                j = np.random.randint(num_seg) + 1
-                part = point_set[seg == j]
-            choice2 = np.random.choice(part.shape[0], self.npoints/5, replace=True)
-            part = part[choice2, :]
-            #print(part.shape)
-            part = torch.from_numpy(part)
+            for j in np.unique(seg):
             
+                part = point_set[seg == j]
+                choice2 = np.random.choice(part.shape[0], self.npoints/4, replace=True)
+                part = part[choice2, :]
+                #print(part.shape)
+                part = part - np.expand_dims(np.mean(part, axis = 0), 0)
+                part = torch.from_numpy(part)
+                parts.append(part)
         
         
         if self.shape_comp:
@@ -120,7 +119,7 @@ class PartDataset(data.Dataset):
         if self.shape_comp:
             return point_set, incomp
         elif self.parts_also:
-            return point_set, part
+            return point_set, parts
         
         elif self.classification:
 
@@ -250,7 +249,7 @@ if __name__ == '__main__':
     d = PartDataset(root = 'shapenetcore_partanno_segmentation_benchmark_v0',  parts_also = True)
     print(len(d))
     ps, cls = d[0]
-    print(ps.size(), ps.type(), cls.size(),cls.type())
+    print(ps.size(), ps.type(), cls[0].size(),cls[0].type())
     
     
     d = PartDataset(root = 'shapenetcore_partanno_segmentation_benchmark_v0',  shape_comp = True)
