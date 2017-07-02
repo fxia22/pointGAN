@@ -108,13 +108,13 @@ class PartDataset(data.Dataset):
         point_set = point_set - np.expand_dims(np.mean(point_set, axis = 0), 0)
         dist = np.max(np.sqrt(np.sum(point_set ** 2, axis = 1)),0)
         dist = np.expand_dims(np.expand_dims(dist, 0), 1)
-        point_set = point_set/dist
+        
+        if not self.parts_also:
+            point_set = point_set/dist
             
         point_set = torch.from_numpy(point_set)
         seg = torch.from_numpy(seg)
         cls = torch.from_numpy(np.array([cls]).astype(np.int64))
-        
- 
         
         if self.shape_comp:
             return point_set, incomp

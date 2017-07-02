@@ -55,7 +55,7 @@ class STN3d(nn.Module):
 
 
 class PointNetfeat(nn.Module):
-    def __init__(self, num_points = 2500, global_feat = True):
+    def __init__(self, num_points = 2500, global_feat = True, trans = True):
         super(PointNetfeat, self).__init__()
         self.stn = STN3d(num_points = num_points)
         self.conv1 = torch.nn.Conv1d(3, 64, 1)
@@ -65,7 +65,7 @@ class PointNetfeat(nn.Module):
         self.bn1 = torch.nn.BatchNorm1d(64)
         self.bn2 = torch.nn.BatchNorm1d(128)
         self.bn3 = torch.nn.BatchNorm1d(1024)
-
+        self.trans = trans
 
 
         #self.mp1 = torch.nn.MaxPool1d(num_points)
@@ -73,21 +73,25 @@ class PointNetfeat(nn.Module):
         self.global_feat = global_feat
     def forward(self, x):
         batchsize = x.size()[0]
-        trans = self.stn(x)
-        #x = x.transpose(2,1)
-        #x = torch.bmm(x, trans)
-        #x = x.transpose(2,1)
+        if self.trans:
+            trans = self.stn(x)
+            x = x.transpose(2,1)
+            x = torch.bmm(x, trans)
+            x = x.transpose(2,1)
         x = F.relu(self.bn1(self.conv1(x)))
         pointfeat = x
         x = F.relu(self.bn2(self.conv2(x)))
         x = self.bn3(self.conv3(x))
         x,_ = torch.max(x, 2)
         x = x.view(-1, 1024)
-        if self.global_feat:
-            return x, trans
+        if self.trans:
+            if self.global_feat:
+                return x, trans
+            else:
+                x = x.view(-1, 1024, 1).repeat(1, 1, self.num_points)
+                return torch.cat([x, pointfeat], 1), trans
         else:
-            x = x.view(-1, 1024, 1).repeat(1, 1, self.num_points)
-            return torch.cat([x, pointfeat], 1), trans
+            return x
 
 class PointNetCls(nn.Module):
     def __init__(self, num_points = 2500, k = 2):
@@ -132,19 +136,20 @@ class PointNetAE(nn.Module):
     def __init__(self, num_points = 2048, k = 2):
         super(PointNetAE, self).__init__()
         self.num_points = num_points
-        self.feat = PointNetfeat(num_points, global_feat=True)
+        self.encoder = nn.Sequential(
+        PointNetfeat(num_points, global_feat=True, trans = False),
+        nn.Linear(1024, 256),
+        nn.ReLU(),
+        nn.Linear(256, 100),
+        )
+          
         self.decoder = PointDecoder(num_points)
         
-        self.fc1 = nn.Linear(1024, 256)
-        self.fc2 = nn.Linear(256, 100)
         
         
     def forward(self, x):
         
-        x, trans = self.feat(x)
-        
-        x = F.relu(self.fc1(x))
-        x = self.fc2(x)
+        x = self.encoder(x)
         
         x = self.decoder(x)
         
