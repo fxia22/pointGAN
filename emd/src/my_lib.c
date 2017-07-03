@@ -31,7 +31,7 @@ int emd_forward(THFloatTensor *xyz1, THFloatTensor *xyz2,
     int n = xyz1->size[1];
     int m = xyz2->size[1];
 
-    printf("in c: %d %d %d\n", batchsize, n, m);
+    //printf("in c: %d %d %d\n", batchsize, n, m);
 
     float *xyz1_data = THFloatTensor_data(xyz1);
     float *xyz2_data = THFloatTensor_data(xyz2);

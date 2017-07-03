@@ -14,8 +14,6 @@ class EMDFunction(Function):
         cost = torch.zeros(batchsize, )
 
         if not xyz1.is_cuda:
-            print('here', n, m, batchsize)
-            print(xyz1.size(), xyz2.size())
             my_lib.emd_forward(xyz1, xyz2, match, cost)
         else:
             match = match.cuda()
