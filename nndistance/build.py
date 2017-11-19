@@ -19,8 +19,8 @@ if torch.cuda.is_available():
 this_file = os.path.dirname(os.path.realpath(__file__))
 print(this_file)
 extra_objects = ['src/nnd_cuda.cu.o']
-extra_objects = [os.path.join(this_file, fname) for fname in extra_objects]    
-    
+extra_objects = [os.path.join(this_file, fname) for fname in extra_objects]
+
 ffi = create_extension(
     '_ext.my_lib',
     headers=headers,

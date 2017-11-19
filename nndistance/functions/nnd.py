@@ -13,8 +13,8 @@ class NNDFunction(Function):
         dist1 = torch.zeros(batchsize, n)
         dist2 = torch.zeros(batchsize, m)
         
-        self.idx1 = torch.zeros(batchsize, n).type(torch.LongTensor)
-        self.idx2 = torch.zeros(batchsize, m).type(torch.LongTensor)
+        self.idx1 = torch.zeros(batchsize, n).type(torch.IntTensor)
+        self.idx2 = torch.zeros(batchsize, m).type(torch.IntTensor)
         
         if not xyz1.is_cuda:
             my_lib.nnd_forward(xyz1, xyz2, dist1, dist2, self.idx1, self.idx2)
@@ -33,7 +33,12 @@ class NNDFunction(Function):
         return dist1, dist2
 
     def backward(self, graddist1, graddist2):
-        
+        #print(self.idx1, self.idx2)
+
+
+        graddist1 = graddist1.contiguous()
+        graddist2 = graddist2.contiguous()
+
         gradxyz1 = torch.zeros(self.xyz1.size())
         gradxyz2 = torch.zeros(self.xyz2.size())
         

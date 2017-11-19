@@ -25,7 +25,7 @@ void nnsearch(int b,int n,int m,const float * xyz1,const float * xyz2,float * di
     }
 }
 
-int nnd_forward(THFloatTensor *xyz1, THFloatTensor *xyz2, THFloatTensor *dist1, THFloatTensor *dist2, THLongTensor *idx1, THLongTensor *idx2) {
+int nnd_forward(THFloatTensor *xyz1, THFloatTensor *xyz2, THFloatTensor *dist1, THFloatTensor *dist2, THIntTensor *idx1, THIntTensor *idx2) {
     int batchsize = xyz1->size[0];
     int n = xyz1->size[1];
     int m = xyz2->size[1];
@@ -36,8 +36,8 @@ int nnd_forward(THFloatTensor *xyz1, THFloatTensor *xyz2, THFloatTensor *dist1, 
     float *xyz2_data = THFloatTensor_data(xyz2);
     float *dist1_data = THFloatTensor_data(dist1);
     float *dist2_data = THFloatTensor_data(dist2);
-    int *idx1_data = THLongTensor_data(idx1);
-    int *idx2_data = THLongTensor_data(idx2);
+    int *idx1_data = THIntTensor_data(idx1);
+    int *idx2_data = THIntTensor_data(idx2);
      
     nnsearch(batchsize, n, m, xyz1_data, xyz2_data, dist1_data, idx1_data);
     nnsearch(batchsize, m, n, xyz2_data, xyz1_data, dist2_data, idx2_data);
@@ -46,7 +46,7 @@ int nnd_forward(THFloatTensor *xyz1, THFloatTensor *xyz2, THFloatTensor *dist1, 
 }
 
 
-int nnd_backward(THFloatTensor *xyz1, THFloatTensor *xyz2, THFloatTensor *gradxyz1, THFloatTensor *gradxyz2, THFloatTensor *graddist1, THFloatTensor *graddist2, THLongTensor *idx1, THLongTensor *idx2) {
+int nnd_backward(THFloatTensor *xyz1, THFloatTensor *xyz2, THFloatTensor *gradxyz1, THFloatTensor *gradxyz2, THFloatTensor *graddist1, THFloatTensor *graddist2, THIntTensor *idx1, THIntTensor *idx2) {
     
     int b = xyz1->size[0];
     int n = xyz1->size[1];
@@ -60,10 +60,9 @@ int nnd_backward(THFloatTensor *xyz1, THFloatTensor *xyz2, THFloatTensor *gradxy
     float *gradxyz2_data = THFloatTensor_data(gradxyz2);
     float *graddist1_data = THFloatTensor_data(graddist1);
     float *graddist2_data = THFloatTensor_data(graddist2);
-    int *idx1_data = THLongTensor_data(idx1);
-    int *idx2_data = THLongTensor_data(idx2);
-    
-    
+    int *idx1_data = THIntTensor_data(idx1);
+    int *idx2_data = THIntTensor_data(idx2);
+
     
     for (int i=0;i<b*n*3;i++)
         gradxyz1_data[i]=0;
@@ -75,10 +74,14 @@ int nnd_backward(THFloatTensor *xyz1, THFloatTensor *xyz2, THFloatTensor *gradxy
             float y1=xyz1_data[(i*n+j)*3+1];
             float z1=xyz1_data[(i*n+j)*3+2];
             int j2=idx1_data[i*n+j];
+
             float x2=xyz2_data[(i*m+j2)*3+0];
             float y2=xyz2_data[(i*m+j2)*3+1];
             float z2=xyz2_data[(i*m+j2)*3+2];
             float g=graddist1_data[i*n+j]*2;
+
+            //printf("%d, %f\n", j2, g);
+
             gradxyz1_data[(i*n+j)*3+0]+=g*(x1-x2);
             gradxyz1_data[(i*n+j)*3+1]+=g*(y1-y2);
             gradxyz1_data[(i*n+j)*3+2]+=g*(z1-z2);
