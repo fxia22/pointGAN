@@ -103,8 +103,8 @@ for epoch in range(opt.nepoch):
         points, part = data
         points = Variable(points)
         part = Variable(part)
-        
-        
+
+
         bs = points.size()[0]
         target = Variable(torch.from_numpy(np.ones(bs,).astype(np.int64))).cuda()
         points = points.transpose(2,1)
@@ -117,7 +117,7 @@ for epoch in range(opt.nepoch):
         part = part.cuda()
         pred, trans = classifier2(part)
         loss21 = F.nll_loss(pred, target)
-        
+
 
         sim_noise = Variable(torch.randn(bs, 100,5)).cuda()
         fake = gen(sim_noise)
@@ -128,16 +128,16 @@ for epoch in range(opt.nepoch):
         #print(fake.size())
         pred2, trans2 = classifier2(fake[:,:,:500])
         loss22 = F.nll_loss(pred2, fake_target)
-        
+
 
         lossD = (loss1 + loss2)/2
         #lossD.backward()
         #print(pred, target)
 
         lossD2 = (loss21 + loss22)/2
-        
+
         (lossD2 + lossD).backward()
-        
+
         optimizerD.step()
         optimizerD2.step()
 
@@ -147,12 +147,12 @@ for epoch in range(opt.nepoch):
         points = gen(sim_noise)
         pred, trans = classifier(points)
         target = Variable(torch.from_numpy(np.ones(bs,).astype(np.int64))).cuda()
-        
+
         pred2, trans2 = classifier2(points[:,:,:500])
-        
-        
+
+
         #print(pred, target)
-        lossG1 = F.nll_loss(pred, target) 
+        lossG1 = F.nll_loss(pred, target)
         lossG2 = F.nll_loss(pred2, target)
         lossG = lossG1 + lossG2
         lossG.backward()
